@@ -16,29 +16,6 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
 
     uint256 public totalRounds;
 
-    error notAdmin(address _msgSender, address _admin);
-
-    error noActiveRound(uint256 _currentRound, bool _isActive);
-
-    error previousActiveRound(uint256 _currentRound, bool _isActive);
-
-    error proposalNotApproved(uint256 _currentRound, uint256 _proposalNumber, bool _isApproved);
-
-    error votingPending(uint256 _currentRound, uint256 _proposalNumber, uint256 _startTime);
-
-    error proposalEnded(uint256 _currentRound, uint256 _proposalNumber, uint256 _endTime);
-
-    error invalidBalance(uint256 _requiredBalance, uint256 _currentBalance);
-
-    event proposalSubmitted(uint256 roundNumber, address owner, uint256 proposalNumber);
-
-    modifier onlyAdmin() {
-        if(msg.sender!=admin) {
-            revert notAdmin(msg.sender, admin);
-        }
-        _;
-    }
-
     struct Round {
         bool isActive;
         uint totalProposals;
@@ -78,6 +55,35 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
     mapping(uint256 => Round) roundDetails;
     
     mapping(address => VoterRecord) voterRec;
+
+    error notAdmin(address _msgSender, address _admin);
+
+    error noActiveRound(uint256 _currentRound, bool _isActive);
+
+    error previousActiveRound(uint256 _currentRound, bool _isActive);
+
+    error roundNotEnded(uint256 _endTime);
+
+    error proposalNotApproved(uint256 _currentRound, uint256 _proposalNumber, bool _isApproved);
+
+    error votingPending(uint256 _currentRound, uint256 _proposalNumber, uint256 _startTime);
+
+    error proposalEnded(uint256 _currentRound, uint256 _proposalNumber, uint256 _endTime);
+
+    error invalidBalance(uint256 _requiredBalance, uint256 _currentBalance);
+
+    error invalidVoter();
+
+    error invalidRound();
+
+    event proposalSubmitted(uint256 roundNumber, address owner, uint256 proposalNumber);
+
+    modifier onlyAdmin() {
+        if(msg.sender!=admin) {
+            revert notAdmin(msg.sender, admin);
+        }
+        _;
+    }
 
     function roundState(uint roundNumber, bool _activity) external onlyAdmin {
         roundDetails[roundNumber].isActive = _activity;
@@ -135,36 +141,43 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
         }
     }
 
-    // function vote(uint256 _round, uint256 _proposal, bool _voteRecord) external {
-    //     if(!roundDetails[_round].isActive) {
-    //       revert noActiveRound(_round,false);
-    //     }
-    //     if(!(token.balanceOf(msg.sender)>=1000000000000000000000)) {
-    //         revert invalidBalance(1000000000000000000000, token.balanceOf(msg.sender));
-    //     }
-    //     Proposal storage proposal = roundDetails[_round].proposalDetails[_proposal];
-    //     if(!proposal.isApproved) {
-    //         revert proposalNotApproved(_round, _proposal, false);
-    //     }
-    //     if(block.timestamp<proposal.startTime) {
-    //         revert votingPending(_round, _proposal, proposal.startTime);
-    //     }
-    //     if(block.timestamp>proposal.endTime) {
-    //         revert proposalEnded(_round, _proposal, proposal.endTime);
-    //     }
-    //     if(_voteRecord) {
-    //     roundDetails[_round].proposalDetails[_proposal].voteYes += 1; }
-    //     else {
-    //     roundDetails[_round].proposalDetails[_proposal].voteNo += 1;    
-    //     }
-    //     voterRec[msg.sender].participationNumber++;
-    //     VotingReceipt storage voteReciept = voterRec[msg.sender].voteDetails[voterRec[msg.sender].participationNumber];
-    //     voteReciept.vote = _voteRecord;
-    //     voteReciept.proposalNumber = _proposal;
-    //     voteReciept.roundNumber = _round;
-    // } 
+    function submitVotes(uint256 round, uint256 proposalNo, VoteRecord[] memory votes) external onlyAdmin {
+        if(block.timestamp > roundDetails[round].endTime) {
+            revert roundNotEnded(roundDetails[round].endTime);
+        }
+        if(!roundDetails[round].proposalDetails[proposalNo].isApproved) {
+            revert proposalNotApproved(round, proposalNo, false);
+        }
+        uint length = votes.length;
+        for(uint i=0; i<length; i++) {
+            _submitVote(round,votes[i]);
+        }
+        
+        _declareResult(round);   
+    }
 
-    function declareResult(uint256 _round) external {
+    function _submitVote(uint256 round, VoteRecord memory vote) internal {
+        (, bool verified) = verifyVote(vote);
+        if(!verified) {
+            revert invalidVoter();
+        }
+        if(round!=vote.roundNumber){
+            revert invalidRound();
+        }
+
+        if(vote.vote) {
+        roundDetails[vote.roundNumber].proposalDetails[vote.proposalNumber].voteYes += 1; }
+        else {
+        roundDetails[vote.roundNumber].proposalDetails[vote.proposalNumber].voteNo += 1;    
+        }
+        voterRec[vote.voter].participationNumber++;
+        VotingReceipt storage voteReciept = voterRec[vote.voter].voteDetails[voterRec[vote.voter].participationNumber];
+        voteReciept.vote = vote.vote;
+        voteReciept.proposalNumber = vote.proposalNumber;
+        voteReciept.roundNumber = vote.roundNumber;  
+    }
+
+    function _declareResult(uint256 _round) internal {
         uint totalProposals = roundDetails[_round].totalProposals;
         uint256[] memory passed;
         uint256 j = 0;
