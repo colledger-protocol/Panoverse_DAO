@@ -85,6 +85,15 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
         _;
     }
 
+    function init(
+        address _admin,
+        IERC20 _token
+    ) external {
+        admin = _admin;
+        token = _token;
+        __EIP712_init_unchained("PanoverseDAO","1");
+    }
+
     function roundState(uint roundNumber, bool _activity) external onlyAdmin {
         roundDetails[roundNumber].isActive = _activity;
     }
@@ -100,8 +109,8 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
     }
 
     function createProposal(string memory _details) external returns(uint proposalNumber){
-        if(!(token.balanceOf(msg.sender)>=1000000000000000000000)) {
-            revert invalidBalance(1000000000000000000000, token.balanceOf(msg.sender));
+        if(!(token.balanceOf(msg.sender)>=10000000000)) {
+            revert invalidBalance(10000000000, token.balanceOf(msg.sender));
         }
         if(!roundDetails[totalRounds].isActive) {
           revert noActiveRound(totalRounds,false);
