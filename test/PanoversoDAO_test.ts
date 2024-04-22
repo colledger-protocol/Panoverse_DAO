@@ -1,9 +1,9 @@
-import { PANO__factory } from './../../typechain-types/factories/contracts/Pano.sol/PANO__factory';
-import { PanoverseDAO__factory } from './../../typechain-types/factories/contracts/PanoverseDAO__factory';
+import { PANO__factory } from '../typechain-types/factories/contracts/Pano.sol/PANO__factory';
+import { PanoverseDAO__factory } from '../typechain-types/factories/contracts/PanoverseDAO__factory';
 import { ethers } from "hardhat";
-import { PANO, PanoverseDAO } from "../../typechain-types";
-import { PanoverseDAO__factory } from "../../typechain-types";
-import helper from "../../utils/helper";
+import { PANO, PanoverseDAO } from "../typechain-types";
+import { PanoverseDAO__factory } from "../typechain-types";
+import helper from "../utils/helper";
 import { expect } from 'chai';
 
 
