@@ -56,7 +56,9 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
 
     mapping(uint256 => Round) public roundDetails;
     
-    mapping(address => VoterRecord) voterRec;
+    mapping(address => VoterRecord) public voterRec;
+    
+    mapping(address => bool) public isAdmin;
 
     error notAdmin(address _msgSender, address _admin);
 
@@ -89,20 +91,26 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
         _;
     }
 
+    modifier checkAdmin() {
+        if(!isAdmin[msg.sender]) {
+            revert notAdmin(msg.sender,admin);
+        }
+        _;
+    }
+
     function init(
-        address _admin
-       
+        address _admin  
     ) external initializer {
         admin = _admin;
-        // token = _token;
+        isAdmin[_admin] = true;
         __EIP712_init_unchained("PanoverseDAO","1");
     }
 
-    function roundState(uint roundNumber, bool _activity) external onlyAdmin {
+    function roundState(uint roundNumber, bool _activity) external checkAdmin() {
         roundDetails[roundNumber].isActive = _activity;
     }
 
-    function startNewRound(uint256 _startTime, uint256 _endTime) external onlyAdmin {
+    function startNewRound(uint256 _startTime, uint256 _endTime) external checkAdmin() returns(uint256) {
         if(roundDetails[totalRounds].isActive) {
             revert previousActiveRound(totalRounds,true);
         }
@@ -110,6 +118,7 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
         roundDetails[totalRounds].startTime = _startTime;
         roundDetails[totalRounds].endTime = _endTime;
         roundDetails[totalRounds].isActive = true;
+        return totalRounds;
     }
 
     function getProposalNumber(uint256 _roundNumber) external view returns(uint){
@@ -118,9 +127,6 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
     }
 
     function createProposal(string memory _details) external returns(uint proposalNumber){
-        // if(!(token.balanceOf(msg.sender)>=10000000000)) {
-        //     revert invalidBalance(10000000000, token.balanceOf(msg.sender));
-        // }
 
         if(!roundDetails[totalRounds].isActive) {
           revert noActiveRound(totalRounds,false);
@@ -135,8 +141,11 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
        
     }
 
-    function approveProposal(uint256 _roundNumber, uint256 _proposalNumber, bool _approve) external onlyAdmin{
-        roundDetails[_roundNumber].proposalDetails[_proposalNumber].isApproved = _approve; 
+    function approveProposal(uint256 _roundNumber, uint256[] memory _proposalNumber, bool _approve) external checkAdmin(){
+        uint length = _proposalNumber.length;
+        for(uint i; i<length; i++) {
+        roundDetails[_roundNumber].proposalDetails[_proposalNumber[i]].isApproved = _approve; 
+        }
     }
 
     function isApprovedProposal(uint256 _roundNumber,uint256 _proposalNumber) public view returns (bool) {
@@ -171,11 +180,12 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
         } else {
             return(voter,false);
         }
-    }
+    }\
+      
 
-    function submitVotes(uint256 round, uint256 proposalNo, VoteRecord[] memory votes) external onlyAdmin {
+    function submitVotes(uint256 round, uint256 proposalNo, VoteRecord[] memory votes) external checkAdmin() returns(uint256){
        
-        if(block.timestamp < roundDetails[round].endTime) {
+        if(block.timestamp > roundDetails[round].endTime) {
             revert roundnotEnded(roundDetails[round].endTime);
         }
         if(!roundDetails[round].proposalDetails[proposalNo].isApproved) {
@@ -187,9 +197,7 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
             
             _submitVote(round,votes[i]);
         
-        }
-        
-        _declareResult(round);   
+        } 
         roundDetails[round].isActive = false;
     }
 
@@ -222,7 +230,7 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
 
     }
 
-    function _declareResult(uint256 _round) internal {
+    function declareResult(uint256 _round) external checkAdmin() returns(uint256[] memory) {
         uint totalProposals = roundDetails[_round].totalProposals;
         uint256[] memory passed = new uint256[](totalProposals);
         uint256 j = 0;
@@ -238,10 +246,19 @@ contract PanoverseDAO is Initializable, Ownable, EIP712Upgradeable {
             
         }
         roundDetails[_round].proposalsPassed = passed;
+        return passed;
     }
 
     function getPassedProposals(uint256 _roundNo) public view returns(uint[] memory passed) {
         return roundDetails[_roundNo].proposalsPassed;
+    }
+
+    function makeAdmin(address _admin, bool _check) external onlyAdmin {
+        isAdmin[_admin] = _check;
+    }
+
+    function transferAdmin(address _admin) external onlyAdmin {
+        admin = _admin;
     }
 
    

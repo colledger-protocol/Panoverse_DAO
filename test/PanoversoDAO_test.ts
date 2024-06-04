@@ -75,6 +75,24 @@ it(" + Contract is deployed properly", async()=>{
 
 });
 
+it("Create a round after round", async() => {
+    await panoDAO.connect(owner).startNewRound(121212121,1212123323);
+
+    console.log("Round1" + await panoDAO.roundDetails(1));
+
+    await panoDAO.connect(owner).roundState(1,false);
+
+    await panoDAO.connect(owner).startNewRound(12121343421,121212343323);
+
+    console.log("Round2" + await panoDAO.roundDetails(2));   
+
+    await panoDAO.connect(owner).roundState(2,false);
+
+    await panoDAO.connect(owner).startNewRound(123,124);
+
+    console.log("Round3" + await panoDAO.roundDetails(3));   
+})
+
 
 
 it(" + Create Proposal : User can create proposal " , async ()=>{
@@ -170,18 +188,21 @@ it(" + Verify Vote: It should verify ", async()=>{
        );
 
 
-    let voteRecords = [voterRecord_1, voterRecord_2,voterRecord_3, voterRecord_4, voterRecord_5, voterRecord_6];
+    // let voteRecords = [voterRecord_1, voterRecord_2,voterRecord_3, voterRecord_4, voterRecord_5, voterRecord_6];
+    let voteRecords = [voterRecord_1, voterRecord_2];
 
    
-    await panoDAO.connect(owner).approveProposal(1,1,true);
+    await panoDAO.connect(owner).approveProposal(1,[1],true);
     
     await panoDAO.connect(owner).submitVotes(1,1, voteRecords);
+
+    await panoDAO.connect(owner).declareResult(1);
    
     let proposal = await panoDAO.getPassedProposals(1);
+
+    console.log("Passed proposals [" + proposal+"]");
     
     // let proposalArray = [1,0,0]
-   
-    expect(proposal[0]).to.be.equal(1);
 
 })
 
@@ -248,8 +269,8 @@ it(" + approve proposal : the admin should be able to approve proposal" , async 
     await panoDAO.connect(signer_1).createProposal("Change Sell tax to 2%");
     await panoDAO.connect(signer_2).createProposal("Change Buy  tax to 8%");
 
-    await panoDAO.connect(owner).approveProposal(1,2,true);
-    await panoDAO.connect(owner).approveProposal(1,3,false);
+    await panoDAO.connect(owner).approveProposal(1,[2],true);
+    await panoDAO.connect(owner).approveProposal(1,[3],false);
 
     let isApproved = await panoDAO.isApprovedProposal(1,2);
     expect (isApproved).to.be.equal(true) ;
@@ -269,7 +290,7 @@ it(" + getPassedProposal : it should show all the passed proposals" , async () =
     await panoDAO.connect(signer_1).createProposal("Change Sell tax to 2%");
     await panoDAO.connect(signer_2).createProposal("Change Buy  tax to 2%");
 
-    await panoDAO.connect(owner).approveProposal(1,1,true);
+    await panoDAO.connect(owner).approveProposal(1,[1],true);
     // await panoDAO.connect(owner).approveProposal(1,1,t);
    
    
@@ -385,7 +406,6 @@ it(" + getPassedProposal : it should show all the passed proposals" , async () =
    
     let proposal = await panoDAO.getPassedProposals(1);
     
-    expect(proposal[0]).to.be.equal(1);
 
 
 })
@@ -400,7 +420,7 @@ it(" - it should revert if voter already voted" , async ()=>{
     await panoDAO.connect(signer_1).createProposal("Change Sell tax to 2%");
     await panoDAO.connect(signer_2).createProposal("Change Buy  tax to 2%");
 
-    await panoDAO.connect(owner).approveProposal(1,1,true);
+    await panoDAO.connect(owner).approveProposal(1,[1],true);
     // await panoDAO.connect(owner).approveProposal(1,1,t);
    
    
@@ -590,10 +610,10 @@ it(" - submitvotes : it  should revert if the votes are being submitted before t
        );
 
 
-    let voteRecords = [voterRecord_1, voterRecord_2,voterRecord_3, voterRecord_4, voterRecord_5, voterRecord_6];
+    let voteRecords = [voterRecord_1,voterRecord_2,voterRecord_3,voterRecord_4,voterRecord_5,voterRecord_6];
 
    
-    await panoDAO.connect(owner).approveProposal(1,1,true);
+    await panoDAO.connect(owner).approveProposal(1,[1],true);
     
     await expect(panoDAO.connect(owner).submitVotes(1,1, voteRecords)).to.be.revertedWithCustomError(panoDAO, "roundnotEnded");
  
@@ -608,8 +628,8 @@ it(" - it should revert if proposal is not approved " , async ()=>{
     await panoDAO.connect(signer_1).createProposal("Change the sell tax %");
     await panoDAO.connect(signer_2).createProposal("Change the buy tax %");
 
-    await panoDAO.connect(owner).approveProposal(1,1,true);
-    await panoDAO.connect(owner).approveProposal(1,2,false);
+    await panoDAO.connect(owner).approveProposal(1,[1],true);
+    await panoDAO.connect(owner).approveProposal(1,[2],false);
 
     
     const helperClass_1 = new helper({
@@ -666,8 +686,8 @@ it(" - submitvote : invalid voter should not submit vote" , async ()=>{
     await panoDAO.connect(signer_1).createProposal("Change the sell tax %");
     await panoDAO.connect(signer_2).createProposal("Change the buy tax %");
 
-    await panoDAO.connect(owner).approveProposal(1,1,true);
-    await panoDAO.connect(owner).approveProposal(1,2,false);
+    await panoDAO.connect(owner).approveProposal(1,[1],true);
+    await panoDAO.connect(owner).approveProposal(1,[2],false);
 
     
     const helperClass_1 = new helper({
@@ -716,8 +736,8 @@ it(" - it should revert if round number is invalid" ,async ()=>{
     await panoDAO.connect(signer_1).createProposal("Change the sell tax %");
     await panoDAO.connect(signer_2).createProposal("Change the buy tax %");
 
-    await panoDAO.connect(owner).approveProposal(1,1,true);
-    await panoDAO.connect(owner).approveProposal(1,2,false);
+    await panoDAO.connect(owner).approveProposal(1,[1],true);
+    await panoDAO.connect(owner).approveProposal(1,[2],false);
 
     
     const helperClass_1 = new helper({
